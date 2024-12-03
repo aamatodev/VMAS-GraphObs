@@ -153,7 +153,8 @@ class Scenario(BaseScenario):
         relative_landmark_pos = torch.cat(relative_landmark_pos, dim=-1)
         obs["relative_landmark_pos"] = relative_landmark_pos
 
-        agent_and_landmark_pos = [agent.state.pos]
+        # agent_and_landmark_pos = [agent.state.pos]
+        agent_and_landmark_pos = []
         for idx, landmark in enumerate(self.world.landmarks):
             agent_and_landmark_pos.append(landmark.state.pos)
 
