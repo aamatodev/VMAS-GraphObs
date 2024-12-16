@@ -105,6 +105,7 @@ class Scenario(BaseScenario):
 
         obs = dict()
         obs["agent_pos"] = agent.state.pos
+        obs["agent_index"] = torch.tensor(int(agent.name.split("_")[1])).unsqueeze(-1).repeat(agent.batch_dim).reshape(-1, 1).to(self.world.device)
         obs["agent_vel"] = agent.state.vel
         obs["relative_landmark_pos"] = dict()
 
