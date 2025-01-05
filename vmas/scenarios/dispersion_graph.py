@@ -162,13 +162,13 @@ class Scenario(BaseScenario):
 
         obs["landmark_pos"] = landmark_pos
 
-        landmark_eaten = [torch.full((landmark.eaten.shape[0], 1), -1).to(self.world.device)]
-        for idx, landmark in enumerate(self.world.landmarks):
-            landmark_eaten.append(landmark.eaten.to(torch.int).unsqueeze(-1))
-
-        landmark_eaten = torch.cat(landmark_eaten, dim=-1)
-
-        obs["landmark_eaten"] = landmark_eaten
+        # landmark_eaten = [torch.full((landmark.eaten.shape[0], 1), -1).to(self.world.device)]
+        # for idx, landmark in enumerate(self.world.landmarks):
+        #     landmark_eaten.append(landmark.eaten.to(torch.int).unsqueeze(-1))
+        #
+        # landmark_eaten = torch.cat(landmark_eaten, dim=-1)
+        #
+        # obs["landmark_eaten"] = landmark_eaten
 
         return obs
 
