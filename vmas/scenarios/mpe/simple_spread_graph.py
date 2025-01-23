@@ -26,7 +26,7 @@ class Scenario(BaseScenario):
             agent = Agent(
                 name=f"agent_{i}",
                 collide=True,
-                shape=Sphere(radius=0.15),
+                shape=Sphere(radius=0.05),
                 color=Color.BLUE,
             )
             world.add_agent(agent)
