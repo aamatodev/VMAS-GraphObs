@@ -3,11 +3,15 @@
 #  All rights reserved.
 
 import torch
+from scipy.optimize import linear_sum_assignment
+
+from vmas.simulator.heuristic_policy import BaseHeuristicPolicy
 
 from vmas import render_interactively
 from vmas.simulator.core import Agent, Landmark, Sphere, World
 from vmas.simulator.scenario import BaseScenario
 from vmas.simulator.utils import Color, ScenarioUtils
+import numpy as np
 
 
 class Scenario(BaseScenario):
@@ -127,6 +131,52 @@ class Scenario(BaseScenario):
             ],
             dim=-1,
         )
+
+
+def assign_agents_to_landmarks(cost_matrix):
+    # Use the Hungarian algorithm (linear_sum_assignment)
+    row_indices, col_indices = linear_sum_assignment(cost_matrix)
+
+    # Return the optimal assignments
+    assignments = list(zip(row_indices, col_indices))
+    return assignments
+
+
+class HeuristicPolicy(BaseHeuristicPolicy):
+    def compute_action(self, obs: torch.Tensor, u_range: float):
+
+        agent_pos = obs[:, :2].view(-1, 1, 2)
+        landmark_pos = obs[:, 4:10].view(-1, 3, 2)
+        other_pos = obs[:, 10:].view(-1, 2, 2)
+
+        agents_pos = torch.cat([agent_pos, other_pos], dim=1)
+
+        distances_to_landmark = []
+        for env in range(agents_pos.shape[0]):
+            m = []
+            for i in range(agents_pos.shape[1]):
+                # Compute the distance from agent i to all landmarks
+                m.append(torch.linalg.vector_norm(agents_pos[env][i] - landmark_pos[env], dim=1))
+            distances_to_landmark.append(torch.stack(m, dim=0))
+
+        # Compute the direction to the closest landmark
+        assignments = []
+        for env in range(obs.shape[0]):
+            assignments.append(assign_agents_to_landmarks(np.array(distances_to_landmark[env])))
+
+        selected_landmark = []
+        for env in range(obs.shape[0]):
+            selected_landmark.append(landmark_pos[env][assignments[env][0][1]])
+
+        direction_to_landmark = torch.from_numpy(np.array(selected_landmark))
+        # Normalize the direction
+        direction_to_landmark /= torch.linalg.vector_norm(direction_to_landmark)
+        # Compute the action
+        action = direction_to_landmark * u_range
+
+        action = torch.clamp(action, min=-u_range, max=u_range)
+
+        return action
 
 
 if __name__ == "__main__":
