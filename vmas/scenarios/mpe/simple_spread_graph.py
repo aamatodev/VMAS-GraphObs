@@ -178,7 +178,7 @@ class HeuristicPolicy(BaseHeuristicPolicy):
         # Normalize the direction
         direction_to_landmark /= torch.linalg.vector_norm(direction_to_landmark)
         # Compute the action
-        action = direction_to_landmark * u_range
+        action = direction_to_landmark * 5
 
         action = torch.clamp(action, min=-u_range, max=u_range)
 
