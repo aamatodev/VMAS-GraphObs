@@ -23,7 +23,7 @@ from vmas.simulator.environment.gym import GymWrapper
 from vmas.simulator.scenario import BaseScenario
 from vmas.simulator.utils import save_video
 
-N_TEXT_LINES_INTERACTIVE = 6
+N_TEXT_LINES_INTERACTIVE = 7
 
 
 class InteractiveEnv:
@@ -151,6 +151,8 @@ class InteractiveEnv:
 
             if done:
                 self.reset = True
+
+            return obs, rew, done, info
 
     def _init_text(self):
         from vmas.simulator import rendering

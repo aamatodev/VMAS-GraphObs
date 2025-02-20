@@ -18,10 +18,11 @@ class Scenario(BaseScenario):
         num_agents = kwargs.pop("n_agents", 3)
         obs_agents = kwargs.pop("obs_agents", True)
         ScenarioUtils.check_kwargs_consumed(kwargs)
-
+        x_semidim = kwargs.pop("x_semidim", 1)
+        y_semidim = kwargs.pop("y_semidim", 1)
         self.obs_agents = obs_agents
 
-        world = World(batch_dim=batch_dim, device=device)
+        world = World(batch_dim=batch_dim, device=device, x_semidim=x_semidim, y_semidim=y_semidim)
         # set any world properties first
         num_landmarks = num_agents
         # Add agents
