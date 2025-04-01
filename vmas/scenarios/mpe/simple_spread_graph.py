@@ -10,7 +10,7 @@ from vmas.simulator.heuristic_policy import BaseHeuristicPolicy
 from vmas import render_interactively
 from vmas.simulator.core import Agent, Landmark, Sphere, World
 from vmas.simulator.scenario import BaseScenario
-from vmas.simulator.utils import Color, ScenarioUtils
+from vmas.simulator.utils import Color, ScenarioUtils, AGENT_INFO_TYPE
 
 
 class Scenario(BaseScenario):
@@ -62,6 +62,25 @@ class Scenario(BaseScenario):
                 ),
                 batch_index=env_index,
             )
+
+        for landmark in self.world.landmarks:
+            landmark.set_pos(
+                torch.zeros(
+                    (
+                        (1, self.world.dim_p)
+                        if env_index is not None
+                        else (self.world.batch_dim, self.world.dim_p)
+                    ),
+                    device=self.world.device,
+                    dtype=torch.float32,
+                ).uniform_(
+                    -1.0,
+                    1.0,
+                ),
+                batch_index=env_index,
+            )
+
+    def partial_reset_world_at(self, env_index: int = None):
 
         for landmark in self.world.landmarks:
             landmark.set_pos(
@@ -137,6 +156,20 @@ class Scenario(BaseScenario):
 
         return obs
 
+    def info(self, agent: Agent) -> AGENT_INFO_TYPE:
+        return {
+            "contrastive_reward": torch.zeros(
+                self.world.batch_dim,
+                device=self.world.device,
+                dtype=torch.float32,
+            ),
+            "vanilla_reward": torch.zeros(
+                self.world.batch_dim,
+                device=self.world.device,
+                dtype=torch.float32,
+            ),
+        }
+
 
 def assign_agents_to_landmarks(cost_matrix):
     # Use the Hungarian algorithm (linear_sum_assignment)
@@ -184,6 +217,8 @@ class HeuristicPolicy(BaseHeuristicPolicy):
         action = torch.clamp(action, min=-u_range, max=u_range)
 
         return action
+
+
 
 if __name__ == "__main__":
     render_interactively(__file__, control_two_agents=True)
