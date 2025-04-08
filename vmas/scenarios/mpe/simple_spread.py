@@ -10,7 +10,7 @@ from vmas.simulator.heuristic_policy import BaseHeuristicPolicy
 from vmas import render_interactively
 from vmas.simulator.core import Agent, Landmark, Sphere, World
 from vmas.simulator.scenario import BaseScenario
-from vmas.simulator.utils import Color, ScenarioUtils
+from vmas.simulator.utils import Color, ScenarioUtils, AGENT_INFO_TYPE
 import numpy as np
 
 
@@ -131,6 +131,20 @@ class Scenario(BaseScenario):
             ],
             dim=-1,
         )
+
+    def info(self, agent: Agent) -> AGENT_INFO_TYPE:
+        return {
+            "contrastive_reward": torch.zeros(
+                self.world.batch_dim,
+                device=self.world.device,
+                dtype=torch.float32,
+            ),
+            "vanilla_reward": torch.zeros(
+                self.world.batch_dim,
+                device=self.world.device,
+                dtype=torch.float32,
+            ),
+        }
 
 
 def assign_agents_to_landmarks(cost_matrix):

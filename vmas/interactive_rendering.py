@@ -154,6 +154,7 @@ class InteractiveEnv:
 
             return obs, rew, done, info
 
+
     def _init_text(self):
         from vmas.simulator import rendering
 
@@ -401,7 +402,7 @@ if __name__ == "__main__":
     args = parse_args()
 
     render_interactively(
-        scenario=args.scenario,
+        scenario="pettingzoo/waterworld",
         control_two_agents=args.control_two_agents,
         save_render=args.save_render,
         display_info=args.display_info,
