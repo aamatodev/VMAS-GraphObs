@@ -222,12 +222,11 @@ class Scenario(BaseScenario):
                 other_pos.append(other.state.pos - agent.state.pos)
 
         return {
-                "agent_type": torch.ones(1) if agent.adversary else torch.zeros(1),
                 "agent_vel": (torch.Tensor(agent.state.vel) if self.observe_vel else []),
                 "agent_pos": (torch.Tensor(agent.state.pos) if self.observe_pos else []),
-                "entity_pos": torch.cat(entity_pos),
-                "other_pos": torch.cat(other_pos),
-                "other_vel": torch.cat(other_vel) if other_vel else torch.zeros(1, 2),
+                "entity_pos": torch.cat(entity_pos, dim=1).reshape(self.world.batch_dim, -1),
+                "other_pos": torch.cat(other_pos, dim=1).reshape(self.world.batch_dim,  -1),
+                "other_vel": torch.cat(other_vel, dim=1) if other_vel else torch.zeros(self.world.batch_dim, 2),
             }
 
     def extra_render(self, env_index: int = 0):
