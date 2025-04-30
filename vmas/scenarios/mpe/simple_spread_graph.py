@@ -18,8 +18,8 @@ class Scenario(BaseScenario):
         num_agents = kwargs.pop("n_agents", 3)
         obs_agents = kwargs.pop("obs_agents", True)
         ScenarioUtils.check_kwargs_consumed(kwargs)
-        x_semidim = kwargs.pop("x_semidim", None)
-        y_semidim = kwargs.pop("y_semidim", None)
+        x_semidim = kwargs.pop("x_semidim", 2)
+        y_semidim = kwargs.pop("y_semidim", 2)
         self.obs_agents = obs_agents
 
         world = World(batch_dim=batch_dim, device=device, x_semidim=x_semidim, y_semidim=y_semidim)
@@ -108,6 +108,11 @@ class Scenario(BaseScenario):
                 device=self.world.device,
                 dtype=torch.float32,
             )
+            n_agents = len(self.world.agents)
+            n_landmarks = len(self.world.landmarks)
+            max_dist = torch.linalg.vector_norm(torch.tensor([4.0, 4.0], device=self.world.device))
+            max_total_dist = n_agents * n_landmarks * max_dist
+
             for single_agent in self.world.agents:
                 for landmark in self.world.landmarks:
                     closest = torch.min(
@@ -124,10 +129,13 @@ class Scenario(BaseScenario):
                     )[0]
                     self.rew -= closest
 
-                if single_agent.collide:
-                    for a in self.world.agents:
-                        if a != single_agent:
-                            self.rew[self.world.is_overlapping(a, single_agent)] -= 1
+                # if single_agent.collide:
+                #     for a in self.world.agents:
+                #         if a != single_agent:
+                #             self.rew[self.world.is_overlapping(a, single_agent)] -= 1  # Optional: normalize this too
+
+            # Normalize to [-1, 0]
+            self.rew /= max_total_dist
 
         return self.rew
 
