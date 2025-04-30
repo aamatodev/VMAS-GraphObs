@@ -142,14 +142,14 @@ class Scenario(BaseScenario):
 
         if agent.adversary:
             if self.adversaries_share_rew:
-                return self.adverary_rew
+                return self.adverary_rew / (0.283 * len(self.adversaries()))
             else:
-                return agent.rew
+                return agent.rew / 0.283
         else:
             if self.agents_share_rew:
-                return self.agents_rew
+                return self.agents_rew / (0.283 * len(self.good_agents()))
             else:
-                return agent.rew
+                return agent.rew / 0.283
 
     def agent_reward(self, agent: Agent):
         # Agents are negatively rewarded if caught by adversaries
