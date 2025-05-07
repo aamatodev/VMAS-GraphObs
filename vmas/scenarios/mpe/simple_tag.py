@@ -142,14 +142,14 @@ class Scenario(BaseScenario):
 
         if agent.adversary:
             if self.adversaries_share_rew:
-                return self.adverary_rew / (0.283 * len(self.adversaries()))
+                return self.adverary_rew / (2.83 * len(self.adversaries()))
             else:
-                return agent.rew / 0.283
+                return agent.rew / 2.83
         else:
             if self.agents_share_rew:
-                return self.agents_rew / (0.283 * len(self.good_agents()))
+                return self.agents_rew / (2.83 * len(self.good_agents()))
             else:
-                return agent.rew / 0.283
+                return agent.rew / 2.83
 
     def agent_reward(self, agent: Agent):
         # Agents are negatively rewarded if caught by adversaries
@@ -160,7 +160,7 @@ class Scenario(BaseScenario):
         if self.shape_agent_rew:
             # reward can optionally be shaped (increased reward for increased distance from adversary)
             for adv in adversaries:
-                rew += 0.1 * torch.linalg.vector_norm(
+                rew += torch.linalg.vector_norm(
                     agent.state.pos - adv.state.pos, dim=-1
                 )
         if agent.collide:
