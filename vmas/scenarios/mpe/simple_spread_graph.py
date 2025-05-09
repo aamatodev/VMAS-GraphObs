@@ -135,7 +135,7 @@ class Scenario(BaseScenario):
                 #             self.rew[self.world.is_overlapping(a, single_agent)] -= 1  # Optional: normalize this too
 
             # Normalize to [-1, 0]
-            self.rew /= max_total_dist
+            self.rew = 2 * (self.rew + max_total_dist) / max_total_dist - 1
 
         return self.rew
 

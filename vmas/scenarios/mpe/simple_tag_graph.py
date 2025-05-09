@@ -124,11 +124,19 @@ class Scenario(BaseScenario):
                     self.adversary_reward(a) if a.adversary else self.agent_reward(a)
                 )
             self.agents_rew = torch.stack(
-                [a.rew for a in self.good_agents()], dim=-1
+                [a.rew[0] for a in self.good_agents()], dim=-1
             ).sum(-1)
             self.adverary_rew = torch.stack(
-                [a.rew for a in self.adversaries()], dim=-1
+                [a.rew[0] for a in self.adversaries()], dim=-1
             ).sum(-1)
+
+            self.agents_rew_coll = torch.stack(
+                [a.rew[1] for a in self.good_agents()], dim=-1
+            ).sum(-1)
+            self.adverary_rew_col = torch.stack(
+                [a.rew[1] for a in self.adversaries()], dim=-1
+            ).sum(-1)
+
             if self.respawn_at_catch:
                 for a in self.good_agents():
                     for adv in self.adversaries():
@@ -137,51 +145,60 @@ class Scenario(BaseScenario):
                             (self.world.batch_dim, self.world.dim_p),
                             device=self.world.device,
                             dtype=torch.float32,
-                        ).uniform_(-self.bound, self.bound,)[coll]
+                        ).uniform_(-self.bound, self.bound, )[coll]
                         a.state.vel[coll] = 0.0
 
         if agent.adversary:
             if self.adversaries_share_rew:
-                return self.adverary_rew / (0.283 * len(self.adversaries()))
+                # 2 * (self.rew + max_total_dist) / max_total_dist - 1
+                n_rew = (self.adverary_rew + (2.83 * len(self.adversaries()))) / (2.83 * len(self.adversaries()))
+                return self.adverary_rew_col
             else:
-                return agent.rew / 0.283
+                n_rew = (self.adverary_rew + 2.83) / 2.83
+                return self.adverary_rew_col
         else:
             if self.agents_share_rew:
-                return self.agents_rew / (0.283 * len(self.good_agents()))
+                n_rew = self.agents_rew / (2.83 * len(self.good_agents()))
+                return self.agents_rew_coll
             else:
-                return agent.rew / 0.283
-
+                n_rew = self.agents_rew / (2.83 * len(self.adversaries()))
+                return self.agents_rew_coll
 
     def agent_reward(self, agent: Agent):
         # Agents are negatively rewarded if caught by adversaries
         rew = torch.zeros(
             self.world.batch_dim, device=self.world.device, dtype=torch.float32
         )
+        rew_coll = torch.zeros(
+            self.world.batch_dim, device=self.world.device, dtype=torch.float32
+        )
         adversaries = self.adversaries()
         if self.shape_agent_rew:
             # reward can optionally be shaped (increased reward for increased distance from adversary)
             for adv in adversaries:
-                rew += 0.1 * torch.linalg.vector_norm(
+                rew += torch.linalg.vector_norm(
                     agent.state.pos - adv.state.pos, dim=-1
                 )
         if agent.collide:
             for a in adversaries:
-                rew[self.is_collision(a, agent)] -= 10
+                rew_coll[self.is_collision(a, agent)] -= 10
 
-        return rew
+        return rew, rew_coll
 
     def adversary_reward(self, agent: Agent):
         # Adversaries are rewarded for collisions with agents
         rew = torch.zeros(
             self.world.batch_dim, device=self.world.device, dtype=torch.float32
         )
+        rew_coll = torch.zeros(
+            self.world.batch_dim, device=self.world.device, dtype=torch.float32
+        )
         agents = self.good_agents()
         if (
-            self.shape_adversary_rew
+                self.shape_adversary_rew
         ):  # reward can optionally be shaped (decreased reward for increased distance from agents)
             rew -= (
-                0.1
-                * torch.min(
+                torch.min(
                     torch.stack(
                         [
                             torch.linalg.vector_norm(
@@ -197,8 +214,8 @@ class Scenario(BaseScenario):
             )
         if agent.collide:
             for ag in agents:
-                rew[self.is_collision(ag, agent)] += 10
-        return rew
+                rew_coll[self.is_collision(ag, agent)] += 10
+        return rew, rew_coll
 
     def info(self, agent: Agent) -> AGENT_INFO_TYPE:
         return {
