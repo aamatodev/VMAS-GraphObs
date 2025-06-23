@@ -12,14 +12,14 @@ from vmas.simulator.utils import save_video
 
 
 def run_heuristic(
-    scenario_name: str,
-    heuristic: Type[BaseHeuristicPolicy] = RandomPolicy,
-    n_steps: int = 200,
-    n_envs: int = 32,
-    env_kwargs: dict = None,
-    render: bool = False,
-    save_render: bool = False,
-    device: str = "cpu",
+        scenario_name: str,
+        heuristic: Type[BaseHeuristicPolicy] = RandomPolicy,
+        n_steps: int = 200,
+        n_envs: int = 32,
+        env_kwargs: dict = None,
+        render: bool = False,
+        save_render: bool = False,
+        device: str = "cpu",
 ):
     assert not (save_render and not render), "To save the video you have to render it"
     if env_kwargs is None:
@@ -73,13 +73,18 @@ def run_heuristic(
 
 
 if __name__ == "__main__":
-    from vmas.scenarios.transport import HeuristicPolicy as TransportHeuristic
+    from vmas.scenarios.dispersion_gag import HeuristicPolicy as DispersionHeuristic
 
     run_heuristic(
-        scenario_name="transport",
-        heuristic=TransportHeuristic,
-        n_envs=300,
-        n_steps=200,
+        scenario_name="dispersion_gag",
+        heuristic=DispersionHeuristic,
+        n_envs=3,
+        n_steps=100,
         render=True,
-        save_render=False,
+        env_kwargs={
+            "n_agents": 4,
+            "share_reward": True,
+            "penalise_by_time": False,
+            "pos_range": 1.0
+        },
     )

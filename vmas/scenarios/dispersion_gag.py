@@ -1,13 +1,15 @@
 #  Copyright (c) 2022-2024.
 #  ProrokLab (https://www.proroklab.org/)
 #  All rights reserved.
-
+import numpy as np
 import torch
+from scipy.optimize._lsap import linear_sum_assignment
 
 from vmas import render_interactively
 from vmas.simulator.core import Agent, Landmark, Sphere, World
+from vmas.simulator.heuristic_policy import BaseHeuristicPolicy
 from vmas.simulator.scenario import BaseScenario
-from vmas.simulator.utils import Color, ScenarioUtils
+from vmas.simulator.utils import Color, ScenarioUtils, AGENT_INFO_TYPE
 
 
 class Scenario(BaseScenario):
@@ -55,6 +57,9 @@ class Scenario(BaseScenario):
                     self.world.dim_p,
                     device=self.world.device,
                     dtype=torch.float32,
+                ).uniform_(
+                    -self.pos_range,
+                    self.pos_range,
                 ),
                 batch_index=env_index,
             )
@@ -114,10 +119,10 @@ class Scenario(BaseScenario):
                 rews[landmark.just_eaten * ~landmark.eaten] += 1
             else:
                 on_food = (
-                    torch.linalg.vector_norm(
-                        agent.state.pos - landmark.state.pos, dim=1
-                    )
-                    < agent.shape.radius + landmark.shape.radius
+                        torch.linalg.vector_norm(
+                            agent.state.pos - landmark.state.pos, dim=1
+                        )
+                        < agent.shape.radius + landmark.shape.radius
                 )
                 eating_rew = landmark.how_many_on_food.reciprocal().nan_to_num(
                     posinf=0, neginf=0
@@ -145,10 +150,42 @@ class Scenario(BaseScenario):
                     dim=-1,
                 )
             )
-        return torch.cat(
-            [agent.state.pos, agent.state.vel, *obs],
-            dim=-1,
-        )
+
+        landmark_pos = []
+        for idx, landmark in enumerate(self.world.landmarks):
+            landmark_pos.append(landmark.state.pos)
+
+        agent_pos = []
+        for idx, agent_p in enumerate(self.world.agents):
+            agent_pos.append(agent_p.state.pos)
+
+        landmark_pos = torch.cat(landmark_pos, dim=-1)
+        agent_pos = torch.cat(agent_pos, dim=-1)
+
+        return {
+            "id": torch.tensor(int(agent.name.split("_")[1])).repeat(agent.batch_dim),
+            "pos": agent.state.pos,
+            "vel": agent.state.vel,
+            "relative_landmarks": torch.cat(obs, dim=1),
+            "absolute_positions": agent_pos,
+            "absolute_landmarks": landmark_pos,
+        }
+
+    # def info(self, agent: Agent) -> AGENT_INFO_TYPE:
+    #     landmark_pos = []
+    #     for idx, landmark in enumerate(self.world.landmarks):
+    #         landmark_pos.append(landmark.state.pos)
+    #
+    #     agent_pos = []
+    #     for idx, agent in enumerate(self.world.landmarks):
+    #         landmark_pos.append(agent.state.pos)
+    #
+    #     landmark_pos = torch.cat(landmark_pos, dim=-1)
+    #
+    #     return {
+    #             "absolute_positions": agent_pos,
+    #             "absolute_landmarks": landmark_pos,
+    #         }
 
     def done(self):
         return torch.all(
@@ -160,11 +197,56 @@ class Scenario(BaseScenario):
         )
 
 
+class HeuristicPolicy(BaseHeuristicPolicy):
+    def assign_agents_to_landmarks(self, cost_matrix):
+        # Use the Hungarian algorithm (linear_sum_assignment)
+        row_indices, col_indices = linear_sum_assignment(cost_matrix)
+
+        # Return the optimal assignments
+        assignments = list(zip(row_indices, col_indices))
+        return assignments
+
+    def compute_action(self, observation: torch.Tensor, u_range: float) -> torch.Tensor:
+        id = observation["id"].view(-1, 1)
+        agents_pos = observation["absolute_positions"].view(-1, 4, 2)
+        landmark_pos = observation["absolute_landmarks"].view(-1, 4, 2)
+
+        batch_size = agents_pos.shape[0]
+
+        distances_to_landmark = []
+        for env in range(batch_size):
+            m = []
+            for i in range(agents_pos.shape[1]):
+                # Compute the distance from agent i to all landmarks
+                m.append(torch.linalg.vector_norm(agents_pos[env][i] - landmark_pos[env], dim=1))
+            distances_to_landmark.append(torch.stack(m, dim=0))
+
+        # Compute the direction to the closest landmark
+        assignments = []
+        for env in range(batch_size):
+            assignments.append(self.assign_agents_to_landmarks(np.array(distances_to_landmark[env])))
+
+        selected_landmark = []
+        for env in range(batch_size):
+            selected_landmark.append(landmark_pos[env][assignments[env][id[0][0].item()][1]])
+
+        direction_to_landmark = torch.from_numpy(np.array(selected_landmark[0] - agents_pos[:, id[0][0].item()]))
+        # Normalize the direction
+        direction_to_landmark /= torch.linalg.vector_norm(direction_to_landmark)
+        # Compute the action
+        action = direction_to_landmark * 5
+
+        action = torch.clamp(action, min=-u_range, max=u_range)
+
+        return action
+
+
 if __name__ == "__main__":
     render_interactively(
         __file__,
-        control_two_agents=True,
+        control_two_agents=False,
         n_agents=4,
-        share_reward=False,
+        share_reward=True,
         penalise_by_tim=False,
+        pos_range=1.0,
     )
