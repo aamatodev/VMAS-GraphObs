@@ -198,6 +198,10 @@ class Scenario(BaseScenario):
 
 
 class HeuristicPolicy(BaseHeuristicPolicy):
+    def __init__(self, n_agents, **kwargs):
+        super().__init__(**kwargs)
+        self.n_agents = n_agents
+
     def assign_agents_to_landmarks(self, cost_matrix):
         # Use the Hungarian algorithm (linear_sum_assignment)
         row_indices, col_indices = linear_sum_assignment(cost_matrix)
@@ -208,8 +212,8 @@ class HeuristicPolicy(BaseHeuristicPolicy):
 
     def compute_action(self, observation: torch.Tensor, u_range: float) -> torch.Tensor:
         id = observation["id"].view(-1, 1)
-        agents_pos = observation["absolute_positions"].view(-1, 4, 2)
-        landmark_pos = observation["absolute_landmarks"].view(-1, 4, 2)
+        agents_pos = observation["absolute_positions"].view(-1, self.n_agents, 2)
+        landmark_pos = observation["absolute_landmarks"].view(-1, self.n_agents, 2)
 
         batch_size = agents_pos.shape[0]
 
@@ -230,7 +234,7 @@ class HeuristicPolicy(BaseHeuristicPolicy):
         for env in range(batch_size):
             selected_landmark.append(landmark_pos[env][assignments[env][id[0][0].item()][1]])
 
-        direction_to_landmark = torch.from_numpy(np.array(selected_landmark[0] - agents_pos[:, id[0][0].item()]))
+        direction_to_landmark = torch.from_numpy(np.array(torch.stack(selected_landmark) - agents_pos[:, id[0][0].item()]))
         # Normalize the direction
         direction_to_landmark /= torch.linalg.vector_norm(direction_to_landmark)
         # Compute the action
@@ -239,6 +243,16 @@ class HeuristicPolicy(BaseHeuristicPolicy):
         action = torch.clamp(action, min=-u_range, max=u_range)
 
         return action
+
+
+class RandomPolicy(BaseHeuristicPolicy):
+    def __init__(self, n_agents, env, **kwargs):
+        super().__init__(**kwargs)
+        self.n_agents = n_agents
+        self.env = env
+
+    # def compute_action(self, observation: torch.Tensor, u_range: float) -> torch.Tensor:
+    #     return self.env.get_random_action(agent)
 
 
 if __name__ == "__main__":

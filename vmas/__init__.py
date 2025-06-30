@@ -24,6 +24,7 @@ scenarios = sorted(
     [
         "dropout",
         "dispersion",
+        "dispersion_gag",
         "transport",
         "reverse_transport",
         "give_way",
