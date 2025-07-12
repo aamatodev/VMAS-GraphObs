@@ -165,6 +165,6 @@ if __name__ == "__main__":
         __file__,
         control_two_agents=True,
         n_agents=4,
-        share_reward=False,
+        share_reward=True,
         penalise_by_tim=False,
     )

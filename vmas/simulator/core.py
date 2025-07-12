@@ -1147,6 +1147,7 @@ class World(TorchVectorizedObject):
         ]
         # Map to save entity indexes
         self.entity_index_map = {}
+        self.step_num = 0
 
     def add_agent(self, agent: Agent):
         """Only way to add agents to the world"""
@@ -1176,6 +1177,7 @@ class World(TorchVectorizedObject):
             )
 
     def reset(self, env_index: int):
+        # self.step_num = 0
         for e in self.entities:
             e._reset(env_index)
 
@@ -1969,6 +1971,8 @@ class World(TorchVectorizedObject):
 
     # update state of the world
     def step(self):
+
+        self.step_num +=1
         self.entity_index_map = {e: i for i, e in enumerate(self.entities)}
 
         for substep in range(self._substeps):

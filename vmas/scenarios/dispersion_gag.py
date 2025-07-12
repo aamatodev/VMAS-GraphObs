@@ -57,9 +57,6 @@ class Scenario(BaseScenario):
                     self.world.dim_p,
                     device=self.world.device,
                     dtype=torch.float32,
-                ).uniform_(
-                    -self.pos_range,
-                    self.pos_range,
                 ),
                 batch_index=env_index,
             )
@@ -136,6 +133,7 @@ class Scenario(BaseScenario):
 
         if self.penalise_by_time:
             rews[rews == 0] = -0.01
+
         return rews
 
     def observation(self, agent: Agent):
@@ -163,29 +161,19 @@ class Scenario(BaseScenario):
         agent_pos = torch.cat(agent_pos, dim=-1)
 
         return {
-            "id": torch.tensor(int(agent.name.split("_")[1])).repeat(agent.batch_dim),
             "pos": agent.state.pos,
             "vel": agent.state.vel,
             "relative_landmarks": torch.cat(obs, dim=1),
-            "absolute_positions": agent_pos,
-            "absolute_landmarks": landmark_pos,
         }
 
-    # def info(self, agent: Agent) -> AGENT_INFO_TYPE:
-    #     landmark_pos = []
-    #     for idx, landmark in enumerate(self.world.landmarks):
-    #         landmark_pos.append(landmark.state.pos)
-    #
-    #     agent_pos = []
-    #     for idx, agent in enumerate(self.world.landmarks):
-    #         landmark_pos.append(agent.state.pos)
-    #
-    #     landmark_pos = torch.cat(landmark_pos, dim=-1)
-    #
-    #     return {
-    #             "absolute_positions": agent_pos,
-    #             "absolute_landmarks": landmark_pos,
-    #         }
+    def info(self, agent: Agent) -> AGENT_INFO_TYPE:
+        landmark_pos = []
+        for idx, landmark in enumerate(self.world.landmarks):
+            landmark_pos.append(landmark.state.pos)
+
+        landmark_pos = torch.cat(landmark_pos, dim=1)
+
+        return dict(absolute_landmarks=landmark_pos)
 
     def done(self):
         return torch.all(
@@ -234,7 +222,8 @@ class HeuristicPolicy(BaseHeuristicPolicy):
         for env in range(batch_size):
             selected_landmark.append(landmark_pos[env][assignments[env][id[0][0].item()][1]])
 
-        direction_to_landmark = torch.from_numpy(np.array(torch.stack(selected_landmark) - agents_pos[:, id[0][0].item()]))
+        direction_to_landmark = torch.from_numpy(
+            np.array(torch.stack(selected_landmark) - agents_pos[:, id[0][0].item()]))
         # Normalize the direction
         direction_to_landmark /= torch.linalg.vector_norm(direction_to_landmark)
         # Compute the action
